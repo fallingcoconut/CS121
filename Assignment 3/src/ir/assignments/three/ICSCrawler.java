@@ -42,13 +42,13 @@ public class ICSCrawler extends WebCrawler
 		String anchor = page.getWebURL().getAnchor();
 
 		
-		logger.info(String.format("Docid: {}", docid));
+		logger.info(String.format("Docid: %s", docid));
 		logger.info(String.format("URL: ", url));
-		logger.info(String.format("Domain: '{}'", domain));
-		logger.info(String.format("Sub-domain: '{}'", subDomain));
-		logger.info(String.format("Path: '{}'", path));
-		logger.info(String.format("Parent page: {}", parentUrl));
-		logger.info(String.format("Anchor text: {}", anchor));
+		logger.info(String.format("Domain: '%s'", domain));
+		logger.info(String.format("Sub-domain: '%s'", subDomain));
+		logger.info(String.format("Path: '%s'", path));
+		logger.info(String.format("Parent page: %s", parentUrl));
+		logger.info(String.format("Anchor text: %s", anchor));
 
 		if (page.getParseData() instanceof HtmlParseData) {
 			HtmlParseData htmlParseData = (HtmlParseData) page.getParseData();
@@ -56,16 +56,16 @@ public class ICSCrawler extends WebCrawler
 			String html = htmlParseData.getHtml();
 			List<WebURL> links = htmlParseData.getOutgoingUrls();
 
-			logger.info(String.format("Text length: {}", text.length()));
-			logger.info(String.format("Html length: {}", html.length()));
-			logger.info(String.format("Number of outgoing links: {}", links.size()));
+			logger.info(String.format("Text length: %s", text.length()));
+			logger.info(String.format("Html length: %s", html.length()));
+			logger.info(String.format("Number of outgoing links: %s", links.size()));
 		}
 
 		Header[] responseHeaders = page.getFetchResponseHeaders();
 		if (responseHeaders != null) {
 			logger.info("Response headers:");
 			for (Header header : responseHeaders) {
-				logger.info(String.format("\t{}: {}", header.getName(), header.getValue()));
+				logger.info(String.format("\t%s: %s", header.getName(), header.getValue()));
 			}
 		}
 

@@ -1,17 +1,15 @@
 package ir.assignments.three;
 import java.util.Collection;
 
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
+
 import edu.uci.ics.crawler4j.crawler.CrawlConfig;
 import edu.uci.ics.crawler4j.crawler.CrawlController;
 import edu.uci.ics.crawler4j.crawler.WebCrawler;
 import edu.uci.ics.crawler4j.fetcher.PageFetcher;
 import edu.uci.ics.crawler4j.robotstxt.RobotstxtConfig;
 import edu.uci.ics.crawler4j.robotstxt.RobotstxtServer;
-
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.Logger;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.PropertyConfigurator;
 
 public class Crawler extends WebCrawler{
 	/**
@@ -52,7 +50,7 @@ public class Crawler extends WebCrawler{
 		 * Be polite: Make sure that we don't send more than 1 request per
 		 * second (1000 milliseconds between requests).
 		 */
-		config.setPolitenessDelay(1000);
+		config.setPolitenessDelay(300);
 
 		/*
 		 * You can set the maximum crawl depth here. The default value is -1 for
@@ -89,6 +87,9 @@ public class Crawler extends WebCrawler{
 		 * rootFolder manually.
 		 */
 		config.setResumableCrawling(false);
+		
+		config.setUserAgentString("UCI Inf141-CS121 crawler 66476701 54535376");
+
 
 		/*
 		 * Instantiate the controller for this crawl.

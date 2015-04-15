@@ -35,17 +35,16 @@ public class Crawler extends WebCrawler{
 		 * crawlStorageFolder is a folder where intermediate crawl data is
 		 * stored.
 		 */
-		String crawlStorageFolder = args[0];
 
 		/*
 		 * numberOfCrawlers shows the number of concurrent threads that should
 		 * be initiated for crawling.
 		 */
-		int numberOfCrawlers = Integer.parseInt(args[1]);
+		int numberOfCrawlers = 2;
 
 		CrawlConfig config = new CrawlConfig();
 
-		config.setCrawlStorageFolder(crawlStorageFolder);
+		config.setCrawlStorageFolder("/crawler4jStorage");
 
 		/*
 		 * Be polite: Make sure that we don't send more than 1 request per

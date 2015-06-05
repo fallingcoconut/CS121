@@ -59,7 +59,14 @@ public class Utilities {
 	public static Map<String, Integer> term2termid;
 	public static Map<Integer, ArrayList<Integer>> docid2termlist;
 	public static Map<Integer, String> termid2term;
-
+	
+	//TODO: implement these indices.
+	// Xueyi
+	public static Map<Integer, ArrayList<Integer>> termid2docids;
+	
+	// Kelvin
+	public static Map<Integer, Map<Integer, Integer>> docid2termfrequencymap; 
+	
 	// comparator to sort the words with the same frequencies
 	// this will sort the words in alphabetical order
 	private static Comparator<String> ALPHABETICAL_ORDER = new Comparator<String>() {
@@ -88,6 +95,7 @@ public class Utilities {
 		term2termid = new HashMap<String, Integer>();
 		docid2termlist = new HashMap<Integer, ArrayList<Integer>>();
 		termid2term = new HashMap<Integer, String>();
+		docid2termfrequencymap = new HashMap<Integer, Map<Integer,Integer>>();
 	}
 
 	public void loadData() throws IOException {
@@ -146,6 +154,8 @@ public class Utilities {
 			ArrayList<Integer> termList = new ArrayList<Integer>();
 			// each page content is marked with "ENDOFPAGE" and page index at
 			// the last line.
+			
+			HashMap<Integer, Integer> termFrequencyMap = new HashMap<Integer, Integer>();
 			while (!line.startsWith("ENDOFPAGE")) {
 				if (!entries.containsKey(url)) {
 
@@ -165,6 +175,11 @@ public class Utilities {
 								termid2term.put(termId, term);
 							}
 							termList.add(termId);
+							if (termFrequencyMap.containsKey(termId)) {
+								termFrequencyMap.put(termId, termFrequencyMap.get(termId) + 1);
+							} else {
+								termFrequencyMap.put(termId, 1);							
+							}
 						}
 					}
 				} else {
@@ -183,6 +198,7 @@ public class Utilities {
 			if (!entries.containsKey(url)) {
 				entries.put(url, text);
 				docid2termlist.put(docid2termlist.keySet().size(), termList);
+				docid2termfrequencymap.put(docid2termlist.keySet().size(), termFrequencyMap);
 			}
 			index++; // for debug
 			System.out.println("currently at page " + index); // for debug
@@ -397,6 +413,10 @@ public class Utilities {
 			}
 		}
 		return url;
+	}
+	
+	public static void calculateTFIDF() {
+		
 	}
 
 	public static void main(String[] args) throws IOException {

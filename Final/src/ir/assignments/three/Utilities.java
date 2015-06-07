@@ -37,6 +37,7 @@ public class Utilities {
 	public static BufferedWriter bw;
 	public File stopwords;
 	public File data;
+	public static int docIdCount;
 	// the list to load stopwords that we should remove when counting common
 	// words
 	public static Set<String> stopwordSet;
@@ -62,6 +63,10 @@ public class Utilities {
 	
 	//TODO: implement these indices.
 	// Xueyi
+	// the inverted index for all terms
+	// logic for making the inverted index:
+			// if the url is already visited
+			//		do not update docId and skip.
 	public static Map<Integer, ArrayList<Integer>> termid2docids;
 	
 	// Kelvin
@@ -96,6 +101,8 @@ public class Utilities {
 		docid2termlist = new HashMap<Integer, ArrayList<Integer>>();
 		termid2term = new HashMap<Integer, String>();
 		docid2termfrequencymap = new HashMap<Integer, Map<Integer,Integer>>();
+		termid2docids = new HashMap<Integer, ArrayList<Integer>>();
+		//docIdCount = 0; // update when loading entries.
 	}
 
 	public void loadData() throws IOException {
@@ -117,7 +124,7 @@ public class Utilities {
 		}
 		br = new BufferedReader(fr);
 
-		int docIdCount = 0;
+		docIdCount = 0; // assign docID to each page we visit
 		for (String line = br.readLine(); line != null; line = br.readLine()) {
 			// it is safe to call realine() in the loop because the data is
 			// formatted.
@@ -151,11 +158,12 @@ public class Utilities {
 			String text = "";
 			line = br.readLine();
 
-			ArrayList<Integer> termList = new ArrayList<Integer>();
+			ArrayList<Integer> termList = new ArrayList<Integer>(); // stores the term ids of this doc.
 			// each page content is marked with "ENDOFPAGE" and page index at
 			// the last line.
 			
 			HashMap<Integer, Integer> termFrequencyMap = new HashMap<Integer, Integer>();
+			// update the term frequency of a page
 			while (!line.startsWith("ENDOFPAGE")) {
 				if (!entries.containsKey(url)) {
 
@@ -195,10 +203,23 @@ public class Utilities {
 				}
 				line = br.readLine();
 			}
-			if (!entries.containsKey(url)) {
+			if (!entries.containsKey(url)) { // if doc is not visited before
+				// add to the entry list
 				entries.put(url, text);
-				docid2termlist.put(docid2termlist.keySet().size(), termList);
-				docid2termfrequencymap.put(docid2termlist.keySet().size(), termFrequencyMap);
+				docIdCount = docid2termlist.keySet().size(); // update the docIdCount
+				docid2termlist.put(docIdCount, termList);
+				docid2termfrequencymap.put(docIdCount, termFrequencyMap);
+				
+				// update the inverted index for terms in this doc.
+				for(int t = 0; t < termList.size(); t++){
+					int termId = termList.get(t);
+					ArrayList<Integer> docIds = new ArrayList<Integer>();
+					if(termid2docids.keySet().contains(termId)){// if termId already in inverted index, refer to the existing list.
+						docIds = termid2docids.get(termId);
+					}
+					docIds.add(docIdCount); // update the docId associated with a term id.
+					termid2docids.put(termList.get(t), docIds);
+				}
 			}
 			index++; // for debug
 			System.out.println("currently at page " + index); // for debug
@@ -214,7 +235,7 @@ public class Utilities {
 		double seconds = (double) duration / 1000;
 
 		System.out.printf("Indexing took : %2.2f seconds \n", seconds);
-	}
+	}	
 
 	// I/O variables are initialized and closed
 	// in each method that calls them

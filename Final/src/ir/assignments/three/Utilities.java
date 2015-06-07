@@ -398,6 +398,12 @@ public class Utilities {
 			s = new ObjectOutputStream(f);
 			s.writeObject(docid2termlist);
 			s.close();
+			
+			file = new File("termid2docidlist");
+			f = new FileOutputStream(file);
+			s = new ObjectOutputStream(f);
+			s.writeObject(termid2docids);
+			s.close();
 
 			// FileInputStream r = new FileInputStream("term2termid");
 			// ObjectInputStream t = new ObjectInputStream(r);

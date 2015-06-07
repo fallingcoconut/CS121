@@ -16,10 +16,13 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.StringTokenizer;
 
@@ -60,18 +63,18 @@ public class Utilities {
 	public static Map<String, Integer> term2termid;
 	public static Map<Integer, ArrayList<Integer>> docid2termlist;
 	public static Map<Integer, String> termid2term;
-	
-	//TODO: implement these indices.
+
+	// TODO: implement these indices.
 	// Xueyi
 	// the inverted index for all terms
 	// logic for making the inverted index:
-			// if the url is already visited
-			//		do not update docId and skip.
+	// if the url is already visited
+	// do not update docId and skip.
 	public static Map<Integer, ArrayList<Integer>> termid2docids;
-	
+
 	// Kelvin
-	public static Map<Integer, Map<Integer, Integer>> docid2termfrequencymap; 
-	
+	public static Map<Integer, Map<Integer, Integer>> docid2termfrequencymap;
+
 	// comparator to sort the words with the same frequencies
 	// this will sort the words in alphabetical order
 	private static Comparator<String> ALPHABETICAL_ORDER = new Comparator<String>() {
@@ -100,9 +103,9 @@ public class Utilities {
 		term2termid = new HashMap<String, Integer>();
 		docid2termlist = new HashMap<Integer, ArrayList<Integer>>();
 		termid2term = new HashMap<Integer, String>();
-		docid2termfrequencymap = new HashMap<Integer, Map<Integer,Integer>>();
+		docid2termfrequencymap = new HashMap<Integer, Map<Integer, Integer>>();
 		termid2docids = new HashMap<Integer, ArrayList<Integer>>();
-		//docIdCount = 0; // update when loading entries.
+		// docIdCount = 0; // update when loading entries.
 	}
 
 	public void loadData() throws IOException {
@@ -158,10 +161,13 @@ public class Utilities {
 			String text = "";
 			line = br.readLine();
 
-			ArrayList<Integer> termList = new ArrayList<Integer>(); // stores the term ids of this doc.
+			ArrayList<Integer> termList = new ArrayList<Integer>(); // stores
+																	// the term
+																	// ids of
+																	// this doc.
 			// each page content is marked with "ENDOFPAGE" and page index at
 			// the last line.
-			
+
 			HashMap<Integer, Integer> termFrequencyMap = new HashMap<Integer, Integer>();
 			// update the term frequency of a page
 			while (!line.startsWith("ENDOFPAGE")) {
@@ -184,9 +190,10 @@ public class Utilities {
 							}
 							termList.add(termId);
 							if (termFrequencyMap.containsKey(termId)) {
-								termFrequencyMap.put(termId, termFrequencyMap.get(termId) + 1);
+								termFrequencyMap.put(termId,
+										termFrequencyMap.get(termId) + 1);
 							} else {
-								termFrequencyMap.put(termId, 1);							
+								termFrequencyMap.put(termId, 1);
 							}
 						}
 					}
@@ -206,18 +213,28 @@ public class Utilities {
 			if (!entries.containsKey(url)) { // if doc is not visited before
 				// add to the entry list
 				entries.put(url, text);
-				docIdCount = docid2termlist.keySet().size(); // update the docIdCount
+				docIdCount = docid2termlist.keySet().size(); // update the
+																// docIdCount
 				docid2termlist.put(docIdCount, termList);
 				docid2termfrequencymap.put(docIdCount, termFrequencyMap);
-				
+
 				// update the inverted index for terms in this doc.
-				for(int t = 0; t < termList.size(); t++){
+				for (int t = 0; t < termList.size(); t++) {
 					int termId = termList.get(t);
 					ArrayList<Integer> docIds = new ArrayList<Integer>();
-					if(termid2docids.keySet().contains(termId)){// if termId already in inverted index, refer to the existing list.
+					if (termid2docids.keySet().contains(termId)) {// if termId
+																	// already
+																	// in
+																	// inverted
+																	// index,
+																	// refer to
+																	// the
+																	// existing
+																	// list.
 						docIds = termid2docids.get(termId);
 					}
-					docIds.add(docIdCount); // update the docId associated with a term id.
+					docIds.add(docIdCount); // update the docId associated with
+											// a term id.
 					termid2docids.put(termList.get(t), docIds);
 				}
 			}
@@ -235,7 +252,7 @@ public class Utilities {
 		double seconds = (double) duration / 1000;
 
 		System.out.printf("Indexing took : %2.2f seconds \n", seconds);
-	}	
+	}
 
 	// I/O variables are initialized and closed
 	// in each method that calls them
@@ -398,7 +415,7 @@ public class Utilities {
 			s = new ObjectOutputStream(f);
 			s.writeObject(docid2termlist);
 			s.close();
-			
+
 			file = new File("termid2docidlist");
 			f = new FileOutputStream(file);
 			s = new ObjectOutputStream(f);
@@ -441,9 +458,75 @@ public class Utilities {
 		}
 		return url;
 	}
-	
-	public static void calculateTFIDF() {
+
+	public static List<DocScore> calculateDocScores(List<String> termList, int top)
+			throws IOException {
+		ArrayList<DocScore> topDocs = new ArrayList<DocScore>();
 		
+		// Hashmap used to accumulate dotproduct of similarity. 
+		HashMap<Integer, Double> docscores = new HashMap<Integer, Double>();
+
+		PriorityQueue<DocScore> highestScoreHeap = new PriorityQueue<DocScore>(
+				11, new Comparator<DocScore>() {
+					@Override
+					public int compare(DocScore o1, DocScore o2) {
+						// TODO Auto-generated method stub
+						if (o1.score > o2.score) {
+							return -1;
+						} else if (o1.score < o2.score) {
+							return 1;
+						} else {
+							return 0;
+						}
+					}
+				});
+
+		for (String term : termList) {
+			int termId = term2termid.get(term);
+			ArrayList<Integer> docIds = termid2docids.get(termId);
+
+			double df = termid2docids.get(termId).size();
+			double querytfidf = (Math.log(1 + 1))
+					* Math.log(docid2termlist.keySet().size() / df);
+
+			for (int i : docIds) {
+
+				// Calculating cosine similarity by accumulating dot product of
+				// document and query
+				
+				double tfidf = calculateTFIDF(termId, i);
+				double dotproduct = querytfidf * tfidf;
+				docscores.put(i, dotproduct + docscores.getOrDefault(i, 0.0));
+			}
+		}
+		
+		// Build heap and pull top 10 documents
+		for (Integer i : docscores.keySet()) {
+			DocScore doc = new DocScore();
+			doc.docId = i;
+			doc.score = docscores.get(i);
+			highestScoreHeap.add(doc);
+		}
+		
+		int numDocsToRetrieve = Math.min(top, highestScoreHeap.size());
+		
+		for (int i = 0; i < numDocsToRetrieve; i++) {
+			topDocs.add(highestScoreHeap.remove());
+		}
+		return topDocs;
+
+	}
+
+	public static double calculateTFIDF(int termId, int docId) {
+		Map<Integer, Integer> termFrequencyMap = docid2termfrequencymap
+				.get(docId);
+		double tf = termFrequencyMap.getOrDefault(termId, 0);
+
+		double df = termid2docids.get(termId).size();
+
+		// Calculate tfidf using weighted term frequency
+		return (Math.log(1 + tf))
+				* Math.log(docid2termlist.keySet().size() / df);
 	}
 
 	public static void main(String[] args) throws IOException {
@@ -457,6 +540,13 @@ public class Utilities {
 				+ " | " + longestPageWords + " words");
 		System.out.println("Number of documents: " + numberOfDocuments());
 		System.out.println("Unique Words: " + numberOfUniqueWords());
-		writeIndexToFile();
+		List<String> termList = Arrays.asList("hello", "world");
+		List<DocScore> topdocs = calculateDocScores(termList, 10);
+		for (DocScore doc : topdocs) {
+			System.out.println(doc.docId);
+
+			System.out.println(doc.score);
+		}
 	}
+
 }

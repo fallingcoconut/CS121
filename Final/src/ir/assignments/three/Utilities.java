@@ -59,7 +59,7 @@ public class Utilities {
 	public static Set<String> subdomainSet;
 
 	public static StringTokenizer st;
-
+	public static Map<Integer, String> docid2docurl;
 	public static Map<String, Integer> term2termid;
 	public static Map<Integer, ArrayList<Integer>> docid2termlist;
 	public static Map<Integer, String> termid2term;
@@ -105,6 +105,7 @@ public class Utilities {
 		termid2term = new HashMap<Integer, String>();
 		docid2termfrequencymap = new HashMap<Integer, Map<Integer, Integer>>();
 		termid2docids = new HashMap<Integer, ArrayList<Integer>>();
+		docid2docurl = new HashMap<Integer, String>();
 		// docIdCount = 0; // update when loading entries.
 	}
 
@@ -179,7 +180,7 @@ public class Utilities {
 					for (int i = 0; i < allTokens.length; i++) {
 						int termId = -1;
 						String term = allTokens[i];
-						term = term.trim();
+						term = term.trim().toLowerCase();
 						if (!term.equals("") && !stopwordSet.contains(term)) {
 							if (term2termid.containsKey(term)) {
 								termId = term2termid.get(term);
@@ -217,6 +218,7 @@ public class Utilities {
 																// docIdCount
 				docid2termlist.put(docIdCount, termList);
 				docid2termfrequencymap.put(docIdCount, termFrequencyMap);
+				docid2docurl.put(docIdCount, url);
 
 				// update the inverted index for terms in this doc.
 				for (int t = 0; t < termList.size(); t++) {
@@ -394,6 +396,76 @@ public class Utilities {
 		return termid2term.keySet().size();
 	}
 
+	public static void loadIndexes(String directory) {
+		long startTime = System.currentTimeMillis();
+		try {
+			// File file = new File("term2termid");
+			// FileOutputStream f;
+			// ObjectOutputStream s;
+			// f = new FileOutputStream(file);
+			// s = new ObjectOutputStream(f);
+			// s.writeObject(term2termid);
+			// s.close();
+			//
+			// file = new File("termid2term");
+			// f = new FileOutputStream(file);
+			// s = new ObjectOutputStream(f);
+			// s.writeObject(termid2term);
+			// s.close();
+			//
+			// file = new File("docid2termlist");
+			// f = new FileOutputStream(file);
+			// s = new ObjectOutputStream(f);
+			// s.writeObject(docid2termlist);
+			// s.close();
+			//
+			// file = new File("termid2docidlist");
+			// f = new FileOutputStream(file);
+			// s = new ObjectOutputStream(f);
+			// s.writeObject(termid2docids);
+			// s.close();
+
+			FileInputStream r = new FileInputStream("term2termid");
+			ObjectInputStream t = new ObjectInputStream(r);
+			term2termid = (HashMap<String, Integer>) t.readObject();
+			t.close();
+			r = new FileInputStream("termid2term");
+			t = new ObjectInputStream(r);
+			termid2term = (HashMap<Integer, String>) t.readObject();
+			t.close();
+			r = new FileInputStream("docid2termlist");
+			t = new ObjectInputStream(r);
+			docid2termlist = (HashMap<Integer, ArrayList<Integer>>) t
+					.readObject();
+			t.close();
+			r = new FileInputStream("termid2docidlist");
+			t = new ObjectInputStream(r);
+			termid2docids = (HashMap<Integer, ArrayList<Integer>>) t
+					.readObject();
+			t.close();
+			r = new FileInputStream("docid2termfrequencymap");
+			t = new ObjectInputStream(r);
+			docid2termfrequencymap = (HashMap<Integer, Map<Integer, Integer>>) t
+					.readObject();
+			t.close();
+
+		} catch (FileNotFoundException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		long endTime = System.currentTimeMillis();
+
+		long duration = endTime - startTime;
+		double seconds = (double) duration / 1000;
+		System.out.printf("Loading took : %2.2f seconds \n", seconds);
+
+	}
+
 	public static void writeIndexToFile() {
 		try {
 			File file = new File("term2termid");
@@ -420,6 +492,12 @@ public class Utilities {
 			f = new FileOutputStream(file);
 			s = new ObjectOutputStream(f);
 			s.writeObject(termid2docids);
+			s.close();
+
+			file = new File("docid2termfrequencymap");
+			f = new FileOutputStream(file);
+			s = new ObjectOutputStream(f);
+			s.writeObject(docid2termfrequencymap);
 			s.close();
 
 			// FileInputStream r = new FileInputStream("term2termid");
@@ -459,13 +537,15 @@ public class Utilities {
 		return url;
 	}
 
-	public static List<DocScore> calculateDocScores(List<String> termList, int top)
-			throws IOException {
+	public static List<DocScore> calculateDocScores(List<String> termList,
+			int top) throws IOException {
 		ArrayList<DocScore> topDocs = new ArrayList<DocScore>();
-		
-		// Hashmap used to accumulate dotproduct of similarity. 
-		HashMap<Integer, Double> docscores = new HashMap<Integer, Double>();
 
+		// Hashmap used to accumulate dotproduct of similarity.
+		HashMap<Integer, Double> docscores = new HashMap<Integer, Double>();
+		HashMap<Integer, Double> docmag = new HashMap<Integer, Double>();
+		double querymag = 0.0;
+		
 		PriorityQueue<DocScore> highestScoreHeap = new PriorityQueue<DocScore>(
 				11, new Comparator<DocScore>() {
 					@Override
@@ -482,36 +562,58 @@ public class Utilities {
 				});
 
 		for (String term : termList) {
-			int termId = term2termid.get(term);
-			ArrayList<Integer> docIds = termid2docids.get(termId);
+			int termId = term2termid.getOrDefault(term, -1);
+			if (termId != -1) {
+				ArrayList<Integer> docIds = termid2docids.get(termId);
 
-			double df = termid2docids.get(termId).size();
-			double querytfidf = (Math.log(1 + 1))
-					* Math.log(docid2termlist.keySet().size() / df);
+				double df = termid2docids.get(termId).size();
+				double querytfidf = (Math.log(1 + 1))
+						* Math.log(docid2termlist.keySet().size() / df);
+				querymag += Math.pow(querytfidf,2);
+				for (int i : docIds) {
 
-			for (int i : docIds) {
+					// Calculating cosine similarity by accumulating dot product
+					// of
+					// document and query
 
-				// Calculating cosine similarity by accumulating dot product of
-				// document and query
-				
-				double tfidf = calculateTFIDF(termId, i);
-				double dotproduct = querytfidf * tfidf;
-				docscores.put(i, dotproduct + docscores.getOrDefault(i, 0.0));
+					double tfidf = calculateTFIDF(termId, i);
+					double dotproduct = querytfidf * tfidf;
+					docscores.put(i,
+							dotproduct + docscores.getOrDefault(i, 0.0));
+					Double mag = docmag.getOrDefault(i, 0.0);
+					mag += Math.pow(tfidf,2);
+					docmag.put(i, mag);
+				}
 			}
-		}
-		
-		// Build heap and pull top 10 documents
-		for (Integer i : docscores.keySet()) {
-			DocScore doc = new DocScore();
-			doc.docId = i;
-			doc.score = docscores.get(i);
-			highestScoreHeap.add(doc);
-		}
-		
-		int numDocsToRetrieve = Math.min(top, highestScoreHeap.size());
-		
-		for (int i = 0; i < numDocsToRetrieve; i++) {
-			topDocs.add(highestScoreHeap.remove());
+			
+			querymag = Math.sqrt(querymag);
+
+			for (int i : docscores.keySet()) {
+				double score = docscores.get(i);
+				double mag = 0;
+				for (Integer j: docid2termfrequencymap.get(i).keySet()) {
+					double tfidf = calculateTFIDF(j, i);
+					mag += Math.pow(tfidf,2);
+				}
+	
+				mag = Math.sqrt(mag);
+				docscores.put(i, score / (querymag * mag));
+				
+			}
+
+			// Build heap and pull top 10 documents
+			for (Integer i : docscores.keySet()) {
+				DocScore doc = new DocScore();
+				doc.docId = i;
+				doc.score = docscores.get(i);
+				highestScoreHeap.add(doc);
+			}
+
+			int numDocsToRetrieve = Math.min(top, highestScoreHeap.size());
+
+			for (int i = 0; i < numDocsToRetrieve; i++) {
+				topDocs.add(highestScoreHeap.remove());
+			}
 		}
 		return topDocs;
 
@@ -532,19 +634,21 @@ public class Utilities {
 	public static void main(String[] args) throws IOException {
 		Utilities utl = new Utilities("stopwords.txt", "data.txt");
 		utl.loadData();
-		writeToSubdomains("Subdomains.txt");
-		writeToCommonWords("CommonWords.txt");
+		// Utilities.writeIndexToFile();
+
+		// utl.loadIndexes("");
 		System.out.println("number of unique pages: " + entries.size());
 		System.out.println("number of subdomains: " + subdomainSet.size());
 		System.out.println("longest page and word number: " + longestPage()
 				+ " | " + longestPageWords + " words");
 		System.out.println("Number of documents: " + numberOfDocuments());
 		System.out.println("Unique Words: " + numberOfUniqueWords());
-		List<String> termList = Arrays.asList("hello", "world");
+		List<String> termList = Arrays.asList("monte");
 		List<DocScore> topdocs = calculateDocScores(termList, 10);
 		for (DocScore doc : topdocs) {
 			System.out.println(doc.docId);
 
+			System.out.println(docid2docurl.get(doc.docId));
 			System.out.println(doc.score);
 		}
 	}

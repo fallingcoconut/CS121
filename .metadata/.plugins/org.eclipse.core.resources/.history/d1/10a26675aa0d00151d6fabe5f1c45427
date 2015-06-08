@@ -648,7 +648,7 @@ public class Utilities {
 		//List<String> termList = Arrays.asList("security");
 		List<String> termList = new ArrayList<String>();
 		// input the query
-		String query = "information retrieval";
+		String query = "REST";
 		String[] words = query.split(" ");
 		for(String word : words)
 			termList.add(word);

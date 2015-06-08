@@ -648,18 +648,18 @@ public class Utilities {
 		//List<String> termList = Arrays.asList("security");
 		List<String> termList = new ArrayList<String>();
 		// input the query
-		String query = "information retrieval";
+		String query = "machine learning";
 		String[] words = query.split(" ");
 		for(String word : words)
 			termList.add(word);
 		List<DocScore> topdocs = calculateDocScores(termList, 10);
-		for (int i = 0; i < 5; i++) {
-			DocScore doc = topdocs.get(i);
-			System.out.println(doc.docId);
-
-			System.out.println(docid2docurl.get(doc.docId));
-			System.out.println(doc.score);
-		}
+		System.out.println(topdocs);
+//		for (DocScore doc : topdocs) {
+//			System.out.println(doc.docId);
+//
+//			System.out.println(docid2docurl.get(doc.docId));
+//			System.out.println(doc.score);
+//		}
 	}
 
 }

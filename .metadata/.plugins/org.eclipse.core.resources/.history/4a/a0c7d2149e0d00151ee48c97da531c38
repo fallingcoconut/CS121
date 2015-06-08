@@ -1,0 +1,658 @@
+// INF 141 / CS 121
+// Kelvin Wu
+// Xueyi Fan
+package ir.assignments.three;
+
+import java.io.BufferedReader;
+import java.util.Collections;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Set;
+import java.util.StringTokenizer;
+
+/**
+ * A collection of utility methods for text processing.
+ */
+public class Utilities {
+	public static int uniqueSubdomain;
+	public static int uniquePage;
+	public static int longestPageWords;
+	public static ArrayList<Frequency> commonWords;
+	public BufferedReader br;
+	public FileReader fr;
+	public static FileWriter fw;
+	public static BufferedWriter bw;
+	public File stopwords;
+	public File data;
+	public static int docIdCount;
+	// the list to load stopwords that we should remove when counting common
+	// words
+	public static Set<String> stopwordSet;
+	public static Map<String, Integer> frequencyMap;
+	public static Map<String, Set<String>> subdomainUnique;
+	public static Map<Integer, ArrayList<String>> reverseMap;
+	// using map to store urls and related texts
+	// with url as the key and text as value
+	// since the key set of a map ensures uniqueness, it is easy to count unique
+	// pages after
+	public static Map<String, String> entries;
+	// similar as above, use map to store pages that duplicates,
+	// with url as the key, time of appearances as value
+	public static Map<String, Integer> duplicatePages;
+	// the set to store unique domains, so that we can count the number easily
+	public static Set<String> subdomainSet;
+
+	public static StringTokenizer st;
+	public static Map<Integer, String> docid2docurl;
+	public static Map<String, Integer> term2termid;
+	public static Map<Integer, ArrayList<Integer>> docid2termlist;
+	public static Map<Integer, String> termid2term;
+
+	// TODO: implement these indices.
+	// Xueyi
+	// the inverted index for all terms
+	// logic for making the inverted index:
+	// if the url is already visited
+	// do not update docId and skip.
+	public static Map<Integer, ArrayList<Integer>> termid2docids;
+
+	// Kelvin
+	public static Map<Integer, Map<Integer, Integer>> docid2termfrequencymap;
+
+	// comparator to sort the words with the same frequencies
+	// this will sort the words in alphabetical order
+	private static Comparator<String> ALPHABETICAL_ORDER = new Comparator<String>() {
+		public int compare(String str1, String str2) {
+			int res = String.CASE_INSENSITIVE_ORDER.compare(str1, str2);
+			if (res == 0) {
+				res = str1.compareTo(str2);
+			}
+			return res;
+		}
+	};
+
+	// initialize the variables
+	public Utilities(String stopwordsFileName, String dataFileName)
+			throws IOException {
+		stopwords = new File(stopwordsFileName);
+		data = new File(dataFileName);
+		stopwordSet = new HashSet<String>();
+		frequencyMap = new HashMap<String, Integer>();
+		reverseMap = new HashMap<Integer, ArrayList<String>>();
+		commonWords = new ArrayList<Frequency>();
+		entries = new HashMap<String, String>();
+		duplicatePages = new HashMap<String, Integer>();
+		subdomainSet = new HashSet<String>();
+		subdomainUnique = new HashMap<String, Set<String>>();
+		term2termid = new HashMap<String, Integer>();
+		docid2termlist = new HashMap<Integer, ArrayList<Integer>>();
+		termid2term = new HashMap<Integer, String>();
+		docid2termfrequencymap = new HashMap<Integer, Map<Integer, Integer>>();
+		termid2docids = new HashMap<Integer, ArrayList<Integer>>();
+		docid2docurl = new HashMap<Integer, String>();
+		// docIdCount = 0; // update when loading entries.
+	}
+
+	public void loadData() throws IOException {
+		loadStopWords();
+		loadEntries();
+	}
+
+	// I/O variables are initialized and closed
+	// in each method that calls them
+	// because thehy are used on different files
+	public void loadEntries() throws IOException {
+		int index = 0; // for debug
+		long startTime = System.currentTimeMillis();
+
+		try {
+			fr = new FileReader(data);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		br = new BufferedReader(fr);
+
+		docIdCount = 0; // assign docID to each page we visit
+		for (String line = br.readLine(); line != null; line = br.readLine()) {
+			// it is safe to call realine() in the loop because the data is
+			// formatted.
+			// first line of each entry is its subdomain
+			String subdomain = line;
+			if (!subdomain.equalsIgnoreCase("ics")) { // we consider ics.uci.edu
+														// as the domain. so
+														// exclude ics from
+														// subdomains
+				// a set will be perfect for counting subdomains.
+				// remove the '.ics' from subdomain
+				subdomain = subdomain.substring(0, subdomain.length() - 4);
+				subdomainSet.add(subdomain);
+			}
+			// System.out.println(subdomainSet); for debug
+
+			// second line of each entry is its url
+			line = br.readLine();
+			String url = line;
+
+			if (subdomainUnique.containsKey(subdomain))
+				subdomainUnique.get(subdomain).add(url);
+			else {
+				Set<String> urls = new HashSet<String>();
+				urls.add(url);
+				subdomainUnique.put(subdomain, urls);
+			}
+
+			// starting from the third line, until it reaches "ENDOFPAGE" is the
+			// text body
+			String text = "";
+			line = br.readLine();
+
+			ArrayList<Integer> termList = new ArrayList<Integer>(); // stores
+																	// the term
+																	// ids of
+																	// this doc.
+			// each page content is marked with "ENDOFPAGE" and page index at
+			// the last line.
+
+			HashMap<Integer, Integer> termFrequencyMap = new HashMap<Integer, Integer>();
+			// update the term frequency of a page
+			while (!line.startsWith("ENDOFPAGE")) {
+				if (!entries.containsKey(url)) {
+
+					text += line + "\n";
+
+					String[] allTokens = line.split("[^a-zA-Z]+");
+					for (int i = 0; i < allTokens.length; i++) {
+						int termId = -1;
+						String term = allTokens[i];
+						term = term.trim().toLowerCase();
+						if (!term.equals("") && !stopwordSet.contains(term)) {
+							if (term2termid.containsKey(term)) {
+								termId = term2termid.get(term);
+							} else {
+								termId = term2termid.keySet().size();
+								term2termid.put(term, termId);
+								termid2term.put(termId, term);
+							}
+							termList.add(termId);
+							if (termFrequencyMap.containsKey(termId)) {
+								termFrequencyMap.put(termId,
+										termFrequencyMap.get(termId) + 1);
+							} else {
+								termFrequencyMap.put(termId, 1);
+							}
+						}
+					}
+				} else {
+					// for later use to increase word frequency appeared in
+					// duplicate pages
+					if (duplicatePages.containsKey(url)) {
+						// if already in the map, increase times of appearances
+						duplicatePages.put(url, duplicatePages.get(url) + 1);
+					}
+					// the times of appearance starts of 2 in duplicate pages
+					// since that the system already detect it in the main map
+					duplicatePages.put(url, 2);
+				}
+				line = br.readLine();
+			}
+			if (!entries.containsKey(url)) { // if doc is not visited before
+				// add to the entry list
+				entries.put(url, text);
+				docIdCount = docid2termlist.keySet().size(); // update the
+																// docIdCount
+				docid2termlist.put(docIdCount, termList);
+				docid2termfrequencymap.put(docIdCount, termFrequencyMap);
+				docid2docurl.put(docIdCount, url);
+
+				// update the inverted index for terms in this doc.
+				for (int t = 0; t < termList.size(); t++) {
+					int termId = termList.get(t);
+					ArrayList<Integer> docIds = new ArrayList<Integer>();
+					if (termid2docids.keySet().contains(termId)) {// if termId
+																	// already
+																	// in
+																	// inverted
+																	// index,
+																	// refer to
+																	// the
+																	// existing
+																	// list.
+						docIds = termid2docids.get(termId);
+					}
+					docIds.add(docIdCount); // update the docId associated with
+											// a term id.
+					termid2docids.put(termList.get(t), docIds);
+				}
+			}
+			index++; // for debug
+			System.out.println("currently at page " + index); // for debug
+		}
+
+		fr.close();
+
+		br.close();
+
+		long endTime = System.currentTimeMillis();
+
+		long duration = endTime - startTime;
+		double seconds = (double) duration / 1000;
+
+		System.out.printf("Indexing took : %2.2f seconds \n", seconds);
+	}
+
+	// I/O variables are initialized and closed
+	// in each method that calls them
+	// because thehy are used on different files
+	// load the file that contains stopwords to remove
+	public void loadStopWords() throws IOException {
+		try {
+			fr = new FileReader(stopwords);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		br = new BufferedReader(fr);
+		for (String line = br.readLine(); line != null; line = br.readLine()) {
+			stopwordSet.add(line);
+		}
+		fr.close();
+		br.close();
+	}
+
+	// I/O variables are initialized and closed
+	// in each method that calls them
+	// because thehy are used on different files
+	// simply takes the subdomain set we created when loading entries and print
+	public static void writeToSubdomains(String outputFilename)
+			throws IOException {
+		fw = new FileWriter(new File(outputFilename));
+		bw = new BufferedWriter(fw);
+
+		for (String s : subdomainUnique.keySet())
+			bw.write(s + " | number of unique pages: "
+					+ subdomainUnique.get(s).size() + "\n");
+
+		// fw.close();
+		bw.close();
+	}
+
+	// I/O variables are initialized and closed
+	// in each method that calls them
+	// because thehy are used on different files
+	// create frequency objects for words that are read from the content
+	// associated
+	// with each url
+	// words from urls that are not unique have their frequencies multiplied
+	// by the time that url appears
+	// also checks if the word is in the stopword set. if it is stop word,
+	// simply dont add to the frequency list.
+	public static void writeToCommonWords(String outputFileName)
+			throws IOException {
+
+		// extract the words from each page.
+		for (String s : entries.keySet()) {
+			st = new StringTokenizer(entries.get(s));
+			String token;
+			while (st.hasMoreTokens()) {
+				token = st.nextToken();
+				if (!stopwordSet.contains(token)) {// if is stopword, skip
+					if (duplicatePages.containsKey(s)) { // if parent url is
+															// duplicated
+						if (frequencyMap.containsKey(token)) { // if already
+																// appeared
+							frequencyMap.put(token, frequencyMap.get(token)
+									+ duplicatePages.get(s));
+						}
+						frequencyMap.put(token, duplicatePages.get(s));
+					}
+					// if not appeared in a duplicate page
+					else if (frequencyMap.containsKey(token)) { // if already
+																// appeared
+						frequencyMap.put(token, frequencyMap.get(token) + 1);
+					} else {
+						// if not in duplicate pages nor already in set
+						frequencyMap.put(token, 1);
+					}
+				}
+			}
+		}
+
+		// so not the frequency map stores the words and its times of
+		// appearances.
+		// now we use another map to store the reverse: frequency value as key,
+		// a list of words have that frequency as value
+		// the reason lies in that so that we can sort the keys of reverseMap so
+		// that top frequency are sorted
+		// then sort the list associated with the frequencies, so that words are
+		// sorted in alphabetical order.
+
+		for (String s : frequencyMap.keySet()) {
+			int frequency = frequencyMap.get(s);
+			if (reverseMap.containsKey(frequency)) {
+				reverseMap.get(frequency).add(s);
+			} else {
+				ArrayList<String> newList = new ArrayList<String>();
+				newList.add(s);
+				reverseMap.put(frequency, newList);
+			}
+		}
+
+		// now we add the reverseMap keys(frequencies) to an intermediate list
+		// and sort it in descending order
+		ArrayList<Integer> frequencies = new ArrayList<Integer>();
+		for (Integer i : reverseMap.keySet()) {
+			frequencies.add(i);
+		}
+
+		Collections.sort(frequencies, Collections.reverseOrder());
+		// now we sort the words in alphabetical order
+		// and create frequencies for them
+		// then add to the commonword list
+		ArrayList<String> temp;
+		for (int i = 0; i < 500; i++) {
+			temp = new ArrayList<String>();
+			temp.addAll(reverseMap.get(frequencies.get(i)));
+
+			Collections.sort(temp, ALPHABETICAL_ORDER);
+
+			for (int j = 0; j < reverseMap.get(frequencies.get(i)).size(); j++) {
+				Frequency fr = new Frequency(temp.get(j), frequencies.get(i));
+				commonWords.add(fr);
+			}
+		}
+
+		// now we write the top words and thei frequencies to the file.
+
+		fw = new FileWriter(new File(outputFileName));
+		bw = new BufferedWriter(fw);
+		for (int i = 0; i < 500; i++) {
+			bw.write("rank :" + (i + 1) + " " + commonWords.get(i).getText()
+					+ " | " + commonWords.get(i).getFrequency() + "\n");
+		}
+		bw.close();
+
+	}
+
+	public static Integer numberOfDocuments() {
+		return docid2termlist.keySet().size();
+	}
+
+	public static Integer numberOfUniqueWords() {
+		return termid2term.keySet().size();
+	}
+
+	public static void loadIndexes(String directory) {
+		long startTime = System.currentTimeMillis();
+		try {
+			// File file = new File("term2termid");
+			// FileOutputStream f;
+			// ObjectOutputStream s;
+			// f = new FileOutputStream(file);
+			// s = new ObjectOutputStream(f);
+			// s.writeObject(term2termid);
+			// s.close();
+			//
+			// file = new File("termid2term");
+			// f = new FileOutputStream(file);
+			// s = new ObjectOutputStream(f);
+			// s.writeObject(termid2term);
+			// s.close();
+			//
+			// file = new File("docid2termlist");
+			// f = new FileOutputStream(file);
+			// s = new ObjectOutputStream(f);
+			// s.writeObject(docid2termlist);
+			// s.close();
+			//
+			// file = new File("termid2docidlist");
+			// f = new FileOutputStream(file);
+			// s = new ObjectOutputStream(f);
+			// s.writeObject(termid2docids);
+			// s.close();
+
+			FileInputStream r = new FileInputStream("term2termid");
+			ObjectInputStream t = new ObjectInputStream(r);
+			term2termid = (HashMap<String, Integer>) t.readObject();
+			t.close();
+			r = new FileInputStream("termid2term");
+			t = new ObjectInputStream(r);
+			termid2term = (HashMap<Integer, String>) t.readObject();
+			t.close();
+			r = new FileInputStream("docid2termlist");
+			t = new ObjectInputStream(r);
+			docid2termlist = (HashMap<Integer, ArrayList<Integer>>) t
+					.readObject();
+			t.close();
+			r = new FileInputStream("termid2docidlist");
+			t = new ObjectInputStream(r);
+			termid2docids = (HashMap<Integer, ArrayList<Integer>>) t
+					.readObject();
+			t.close();
+			r = new FileInputStream("docid2termfrequencymap");
+			t = new ObjectInputStream(r);
+			docid2termfrequencymap = (HashMap<Integer, Map<Integer, Integer>>) t
+					.readObject();
+			t.close();
+
+		} catch (FileNotFoundException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		long endTime = System.currentTimeMillis();
+
+		long duration = endTime - startTime;
+		double seconds = (double) duration / 1000;
+		System.out.printf("Loading took : %2.2f seconds \n", seconds);
+
+	}
+
+	public static void writeIndexToFile() {
+		try {
+			File file = new File("term2termid");
+			FileOutputStream f;
+			ObjectOutputStream s;
+			f = new FileOutputStream(file);
+			s = new ObjectOutputStream(f);
+			s.writeObject(term2termid);
+			s.close();
+
+			file = new File("termid2term");
+			f = new FileOutputStream(file);
+			s = new ObjectOutputStream(f);
+			s.writeObject(termid2term);
+			s.close();
+
+			file = new File("docid2termlist");
+			f = new FileOutputStream(file);
+			s = new ObjectOutputStream(f);
+			s.writeObject(docid2termlist);
+			s.close();
+
+			file = new File("termid2docidlist");
+			f = new FileOutputStream(file);
+			s = new ObjectOutputStream(f);
+			s.writeObject(termid2docids);
+			s.close();
+
+			file = new File("docid2termfrequencymap");
+			f = new FileOutputStream(file);
+			s = new ObjectOutputStream(f);
+			s.writeObject(docid2termfrequencymap);
+			s.close();
+
+			// FileInputStream r = new FileInputStream("term2termid");
+			// ObjectInputStream t = new ObjectInputStream(r);
+			// HashMap<String, Integer> fileObj2 = (HashMap<String, Integer>)
+			// t.readObject();
+			// t.close();
+			// System.out.println(term2termid.hashCode());
+			// System.out.println(fileObj2.hashCode());
+
+		} catch (FileNotFoundException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		// } catch (ClassNotFoundException e1) {
+		// e1.printStackTrace();
+		// }
+
+	}
+
+	// since the text we passed to this class is parsed text without the
+	// html markups, we dont need to worry about them.
+	public static String longestPage() {
+		String url = "";
+		longestPageWords = 0;
+		for (String s : entries.keySet()) {
+			String text = entries.get(s);
+			String words = text.trim();
+			int count = words.split("\\W+").length;
+			if (count >= longestPageWords) {
+				longestPageWords = count;
+				url = s;
+			}
+		}
+		return url;
+	}
+
+	public static List<DocScore> calculateDocScores(List<String> termList,
+			int top) throws IOException {
+		ArrayList<DocScore> topDocs = new ArrayList<DocScore>();
+
+		// Hashmap used to accumulate dotproduct of similarity.
+		HashMap<Integer, Double> docscores = new HashMap<Integer, Double>();
+		HashMap<Integer, Double> docmag = new HashMap<Integer, Double>();
+		double querymag = 0.0;
+		
+		PriorityQueue<DocScore> highestScoreHeap = new PriorityQueue<DocScore>(
+				11, new Comparator<DocScore>() {
+					@Override
+					public int compare(DocScore o1, DocScore o2) {
+						// TODO Auto-generated method stub
+						if (o1.score > o2.score) {
+							return -1;
+						} else if (o1.score < o2.score) {
+							return 1;
+						} else {
+							return 0;
+						}
+					}
+				});
+
+		for (String term : termList) {
+			int termId = term2termid.getOrDefault(term, -1);
+			if (termId != -1) {
+				ArrayList<Integer> docIds = termid2docids.get(termId);
+
+				double df = termid2docids.get(termId).size();
+				double querytfidf = (Math.log(1 + 1))
+						* Math.log(docid2termlist.keySet().size() / df);
+				querymag += Math.pow(querytfidf,2);
+				for (int i : docIds) {
+
+					// Calculating cosine similarity by accumulating dot product
+					// of
+					// document and query
+
+					double tfidf = calculateTFIDF(termId, i);
+					double dotproduct = querytfidf * tfidf;
+					docscores.put(i,
+							dotproduct + docscores.getOrDefault(i, 0.0));
+					Double mag = docmag.getOrDefault(i, 0.0);
+					mag += Math.pow(tfidf,2);
+					docmag.put(i, mag);
+				}
+			}
+			
+			querymag = Math.sqrt(querymag);
+
+			for (int i : docscores.keySet()) {
+				double score = docscores.get(i);
+				double mag = 0;
+				for (Integer j: docid2termfrequencymap.get(i).keySet()) {
+					double tfidf = calculateTFIDF(j, i);
+					mag += Math.pow(tfidf,2);
+				}
+	
+				mag = Math.sqrt(mag);
+				docscores.put(i, score / (querymag * mag));
+				
+			}
+
+			// Build heap and pull top 10 documents
+			for (Integer i : docscores.keySet()) {
+				DocScore doc = new DocScore();
+				doc.docId = i;
+				doc.score = docscores.get(i);
+				highestScoreHeap.add(doc);
+			}
+
+			int numDocsToRetrieve = Math.min(top, highestScoreHeap.size());
+
+			for (int i = 0; i < numDocsToRetrieve; i++) {
+				topDocs.add(highestScoreHeap.remove());
+			}
+		}
+		return topDocs;
+
+	}
+
+	public static double calculateTFIDF(int termId, int docId) {
+		Map<Integer, Integer> termFrequencyMap = docid2termfrequencymap
+				.get(docId);
+		double tf = termFrequencyMap.getOrDefault(termId, 0);
+
+		double df = termid2docids.get(termId).size();
+
+		// Calculate tfidf using weighted term frequency
+		return (Math.log(1 + tf))
+				* Math.log(docid2termlist.keySet().size() / df);
+	}
+
+	public static void main(String[] args) throws IOException {
+		Utilities utl = new Utilities("stopwords.txt", "data.txt");
+		utl.loadData();
+		// Utilities.writeIndexToFile();
+
+		// utl.loadIndexes("");
+		System.out.println("number of unique pages: " + entries.size());
+		System.out.println("number of subdomains: " + subdomainSet.size());
+		System.out.println("longest page and word number: " + longestPage()
+				+ " | " + longestPageWords + " words");
+		System.out.println("Number of documents: " + numberOfDocuments());
+		System.out.println("Unique Words: " + numberOfUniqueWords());
+		// console input for the query
+		List<String> termList = Arrays.asList("monte");
+		Scanner input = new Scanner(System.in);
+		List<DocScore> topdocs = calculateDocScores(termList, 10);
+		for (DocScore doc : topdocs) {
+			System.out.println(doc.docId);
+
+			System.out.println(docid2docurl.get(doc.docId));
+			System.out.println(doc.score);
+		}
+	}
+
+}

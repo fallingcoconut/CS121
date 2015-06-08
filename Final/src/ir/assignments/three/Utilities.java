@@ -235,8 +235,11 @@ public class Utilities {
 																	// list.
 						docIds = termid2docids.get(termId);
 					}
-					docIds.add(docIdCount); // update the docId associated with
-											// a term id.
+					if (!docIds.contains(docIdCount)) {
+						docIds.add(docIdCount); // update the docId associated
+												// with
+						// a term id.
+					}
 					termid2docids.put(termList.get(t), docIds);
 				}
 			}
@@ -543,25 +546,11 @@ public class Utilities {
 
 		// Hashmap used to accumulate dotproduct of similarity.
 		HashMap<Integer, Double> docscores = new HashMap<Integer, Double>();
-		HashMap<Integer, Double> docmag = new HashMap<Integer, Double>();
 		double querymag = 0.0;
-		
-		PriorityQueue<DocScore> highestScoreHeap = new PriorityQueue<DocScore>(
-				11, new Comparator<DocScore>() {
-					@Override
-					public int compare(DocScore o1, DocScore o2) {
-						// TODO Auto-generated method stub
-						if (o1.score > o2.score) {
-							return -1;
-						} else if (o1.score < o2.score) {
-							return 1;
-						} else {
-							return 0;
-						}
-					}
-				});
 
+		PriorityQueue<DocScore> highestScoreHeap = new PriorityQueue<DocScore>();
 		for (String term : termList) {
+
 			int termId = term2termid.getOrDefault(term, -1);
 			if (termId != -1) {
 				ArrayList<Integer> docIds = termid2docids.get(termId);
@@ -569,52 +558,55 @@ public class Utilities {
 				double df = termid2docids.get(termId).size();
 				double querytfidf = (Math.log(1 + 1))
 						* Math.log(docid2termlist.keySet().size() / df);
-				querymag += Math.pow(querytfidf,2);
-				for (int i : docIds) {
+				querymag += Math.pow(querytfidf, 2);
 
+				for (int i : docIds) {
 					// Calculating cosine similarity by accumulating dot product
-					// of
-					// document and query
+					// of document and query
 
 					double tfidf = calculateTFIDF(termId, i);
 					double dotproduct = querytfidf * tfidf;
 					docscores.put(i,
 							dotproduct + docscores.getOrDefault(i, 0.0));
-					Double mag = docmag.getOrDefault(i, 0.0);
-					mag += Math.pow(tfidf,2);
-					docmag.put(i, mag);
 				}
 			}
-			
+
 			querymag = Math.sqrt(querymag);
 
-			for (int i : docscores.keySet()) {
-				double score = docscores.get(i);
+			for (int docId : docscores.keySet()) {
+
+				double score = docscores.get(docId);
 				double mag = 0;
-				for (Integer j: docid2termfrequencymap.get(i).keySet()) {
-					double tfidf = calculateTFIDF(j, i);
-					mag += Math.pow(tfidf,2);
+
+				// Calculate magnitude of the document vector
+				for (int vectorTermId : docid2termfrequencymap.get(docId)
+						.keySet()) {
+					double tfidf = calculateTFIDF(vectorTermId, docId);
+					mag += Math.pow(tfidf, 2);
 				}
-	
+
 				mag = Math.sqrt(mag);
-				docscores.put(i, score / (querymag * mag));
 				
-			}
-
-			// Build heap and pull top 10 documents
-			for (Integer i : docscores.keySet()) {
-				DocScore doc = new DocScore();
-				doc.docId = i;
-				doc.score = docscores.get(i);
-				highestScoreHeap.add(doc);
-			}
-
-			int numDocsToRetrieve = Math.min(top, highestScoreHeap.size());
-
-			for (int i = 0; i < numDocsToRetrieve; i++) {
-				topDocs.add(highestScoreHeap.remove());
+				// Cosine Similarity = A.B / |A|*|B|
+				docscores.put(docId, score / (querymag * mag));
 			}
 		}
+
+		// Build heap and pull top 10 documents
+		for (Integer i : docscores.keySet()) {
+			DocScore doc = new DocScore();
+			doc.docId = i;
+			doc.score = docscores.get(i);
+			highestScoreHeap.add(doc);
+		}
+		int numDocsToRetrieve = Math.min(top, highestScoreHeap.size());
+
+		for (int i = 0; i < numDocsToRetrieve; i++) {
+
+			DocScore doc = highestScoreHeap.poll();
+			topDocs.add(doc);
+		}
+
 		return topDocs;
 
 	}
@@ -643,11 +635,10 @@ public class Utilities {
 				+ " | " + longestPageWords + " words");
 		System.out.println("Number of documents: " + numberOfDocuments());
 		System.out.println("Unique Words: " + numberOfUniqueWords());
-		List<String> termList = Arrays.asList("monte");
+		List<String> termList = Arrays.asList("machine", "learning");
 		List<DocScore> topdocs = calculateDocScores(termList, 10);
 		for (DocScore doc : topdocs) {
 			System.out.println(doc.docId);
-
 			System.out.println(docid2docurl.get(doc.docId));
 			System.out.println(doc.score);
 		}

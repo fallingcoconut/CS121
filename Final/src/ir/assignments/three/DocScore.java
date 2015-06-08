@@ -1,6 +1,6 @@
 package ir.assignments.three;
 
 public class DocScore {
-	int docId;
-	double score;
+	public int docId;
+	public double score;
 }

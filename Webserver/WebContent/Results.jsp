@@ -7,6 +7,7 @@
 <title>Insert title here</title>
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
 </head>
+
 <body>
 	<!--header-->
 	<div>
@@ -30,10 +31,12 @@
 	<!-- input box -->
 	<div class="col-lg-6">
 		<div class="input-group">
-			<input type="text" class="form-control" placeholder="Search for...">
-			<span class="input-group-btn">
-				<button class="btn btn-default" type="button">Go</button>
-			</span>
+			<form>
+				<input type="text" class="form-control" placeholder="Search for..." onclick="the get function">
+				<span class="input-group-btn">
+					<button class="btn btn-default" type="button">Go</button>
+				</span>
+			</form>
 		</div>
 	</div>	
 	

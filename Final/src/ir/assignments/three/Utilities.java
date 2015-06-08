@@ -26,6 +26,8 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.StringTokenizer;
 
+import java.util.Scanner;
+
 /**
  * A collection of utility methods for text processing.
  */
@@ -643,7 +645,13 @@ public class Utilities {
 				+ " | " + longestPageWords + " words");
 		System.out.println("Number of documents: " + numberOfDocuments());
 		System.out.println("Unique Words: " + numberOfUniqueWords());
-		List<String> termList = Arrays.asList("monte");
+		//List<String> termList = Arrays.asList("security");
+		List<String> termList = new ArrayList<String>();
+		// input the query
+		String query = "machine learning";
+		String[] words = query.split(" ");
+		for(String word : words)
+			termList.add(word);
 		List<DocScore> topdocs = calculateDocScores(termList, 10);
 		for (DocScore doc : topdocs) {
 			System.out.println(doc.docId);

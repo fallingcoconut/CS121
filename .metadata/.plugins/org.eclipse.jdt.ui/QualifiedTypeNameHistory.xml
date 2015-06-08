@@ -4,4 +4,5 @@
 <fullyQualifiedTypeName name="java.util.ArrayList"/>
 <fullyQualifiedTypeName name="java.io.FileOutputStream"/>
 <fullyQualifiedTypeName name="java.io.ObjectOutputStream"/>
+<fullyQualifiedTypeName name="com.sun.java_cup.internal.runtime.Scanner"/>
 </qualifiedTypeNameHistroy>

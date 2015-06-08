@@ -5,6 +5,7 @@
 		<item value="false" key="WizardProjectsImportPage.STORE_COPY_PROJECT_ID"/>
 		<item value="false" key="WizardProjectsImportPage.STORE_ARCHIVE_SELECTED"/>
 		<list key="WizardProjectsImportPage.STORE_DIRECTORIES">
+			<item value="/Users/Eddie/CS121"/>
 			<item value="/Users/Eddie/CS121/Final"/>
 		</list>
 		<list key="WizardProjectsImportPage.STORE_ARCHIVES">

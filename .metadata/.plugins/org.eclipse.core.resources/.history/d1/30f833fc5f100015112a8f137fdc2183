@@ -44,7 +44,7 @@
 	<div class="jumbotron">
 		<h1>Search Results:</h1>
 		<form method="post" action="doPost()">
-				<button class="btn btn-default" type="button">get results</button>
+								<button class="btn btn-default" type="button">Go</button>
 				</span>
 		</form>
 	</div>

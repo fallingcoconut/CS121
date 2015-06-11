@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,6 +25,8 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.StringTokenizer;
+
+import java.util.Scanner;
 
 /**
  * A collection of utility methods for text processing.
@@ -234,11 +237,8 @@ public class Utilities {
 																	// list.
 						docIds = termid2docids.get(termId);
 					}
-					if (!docIds.contains(docIdCount)) {
-						docIds.add(docIdCount); // update the docId associated
-												// with
-						// a term id.
-					}
+					docIds.add(docIdCount); // update the docId associated with
+											// a term id.
 					termid2docids.put(termList.get(t), docIds);
 				}
 			}
@@ -398,10 +398,35 @@ public class Utilities {
 		return termid2term.keySet().size();
 	}
 
-	@SuppressWarnings("unchecked")
 	public static void loadIndexes(String directory) {
 		long startTime = System.currentTimeMillis();
 		try {
+			// File file = new File("term2termid");
+			// FileOutputStream f;
+			// ObjectOutputStream s;
+			// f = new FileOutputStream(file);
+			// s = new ObjectOutputStream(f);
+			// s.writeObject(term2termid);
+			// s.close();
+			//
+			// file = new File("termid2term");
+			// f = new FileOutputStream(file);
+			// s = new ObjectOutputStream(f);
+			// s.writeObject(termid2term);
+			// s.close();
+			//
+			// file = new File("docid2termlist");
+			// f = new FileOutputStream(file);
+			// s = new ObjectOutputStream(f);
+			// s.writeObject(docid2termlist);
+			// s.close();
+			//
+			// file = new File("termid2docidlist");
+			// f = new FileOutputStream(file);
+			// s = new ObjectOutputStream(f);
+			// s.writeObject(termid2docids);
+			// s.close();
+
 			FileInputStream r = new FileInputStream("term2termid");
 			ObjectInputStream t = new ObjectInputStream(r);
 			term2termid = (HashMap<String, Integer>) t.readObject();
@@ -477,11 +502,23 @@ public class Utilities {
 			s.writeObject(docid2termfrequencymap);
 			s.close();
 
+			// FileInputStream r = new FileInputStream("term2termid");
+			// ObjectInputStream t = new ObjectInputStream(r);
+			// HashMap<String, Integer> fileObj2 = (HashMap<String, Integer>)
+			// t.readObject();
+			// t.close();
+			// System.out.println(term2termid.hashCode());
+			// System.out.println(fileObj2.hashCode());
+
 		} catch (FileNotFoundException e1) {
+			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
+		// } catch (ClassNotFoundException e1) {
+		// e1.printStackTrace();
+		// }
 
 	}
 
@@ -508,11 +545,25 @@ public class Utilities {
 
 		// Hashmap used to accumulate dotproduct of similarity.
 		HashMap<Integer, Double> docscores = new HashMap<Integer, Double>();
+		HashMap<Integer, Double> docmag = new HashMap<Integer, Double>();
 		double querymag = 0.0;
+		
+		PriorityQueue<DocScore> highestScoreHeap = new PriorityQueue<DocScore>(
+				11, new Comparator<DocScore>() {
+					@Override
+					public int compare(DocScore o1, DocScore o2) {
+						// TODO Auto-generated method stub
+						if (o1.score > o2.score) {
+							return -1;
+						} else if (o1.score < o2.score) {
+							return 1;
+						} else {
+							return 0;
+						}
+					}
+				});
 
-		PriorityQueue<DocScore> highestScoreHeap = new PriorityQueue<DocScore>();
 		for (String term : termList) {
-
 			int termId = term2termid.getOrDefault(term, -1);
 			if (termId != -1) {
 				ArrayList<Integer> docIds = termid2docids.get(termId);
@@ -520,55 +571,52 @@ public class Utilities {
 				double df = termid2docids.get(termId).size();
 				double querytfidf = (Math.log(1 + 1))
 						* Math.log(docid2termlist.keySet().size() / df);
-				querymag += Math.pow(querytfidf, 2);
-
+				querymag += Math.pow(querytfidf,2);
 				for (int i : docIds) {
+
 					// Calculating cosine similarity by accumulating dot product
-					// of document and query
+					// of
+					// document and query
 
 					double tfidf = calculateTFIDF(termId, i);
 					double dotproduct = querytfidf * tfidf;
 					docscores.put(i,
 							dotproduct + docscores.getOrDefault(i, 0.0));
+					Double mag = docmag.getOrDefault(i, 0.0);
+					mag += Math.pow(tfidf,2);
+					docmag.put(i, mag);
 				}
 			}
-
+			
 			querymag = Math.sqrt(querymag);
 
-			for (int docId : docscores.keySet()) {
-
-				double score = docscores.get(docId);
+			for (int i : docscores.keySet()) {
+				double score = docscores.get(i);
 				double mag = 0;
-
-				// Calculate magnitude of the document vector
-				for (int vectorTermId : docid2termfrequencymap.get(docId)
-						.keySet()) {
-					double tfidf = calculateTFIDF(vectorTermId, docId);
-					mag += Math.pow(tfidf, 2);
+				for (Integer j: docid2termfrequencymap.get(i).keySet()) {
+					double tfidf = calculateTFIDF(j, i);
+					mag += Math.pow(tfidf,2);
 				}
-
+	
 				mag = Math.sqrt(mag);
+				docscores.put(i, score / (querymag * mag));
 				
-				// Cosine Similarity = A.B / (|A|*|B|)
-				docscores.put(docId, score / (querymag * mag));
+			}
+
+			// Build heap and pull top 10 documents
+			for (Integer i : docscores.keySet()) {
+				DocScore doc = new DocScore();
+				doc.docId = i;
+				doc.score = docscores.get(i);
+				highestScoreHeap.add(doc);
+			}
+
+			int numDocsToRetrieve = Math.min(top, highestScoreHeap.size());
+
+			for (int i = 0; i < numDocsToRetrieve; i++) {
+				topDocs.add(highestScoreHeap.remove());
 			}
 		}
-
-		// Build heap and pull top 10 documents
-		for (Integer i : docscores.keySet()) {
-			DocScore doc = new DocScore();
-			doc.docId = i;
-			doc.score = docscores.get(i);
-			highestScoreHeap.add(doc);
-		}
-		int numDocsToRetrieve = Math.min(top, highestScoreHeap.size());
-
-		for (int i = 0; i < numDocsToRetrieve; i++) {
-
-			DocScore doc = highestScoreHeap.poll();
-			topDocs.add(doc);
-		}
-
 		return topDocs;
 
 	}
@@ -600,14 +648,15 @@ public class Utilities {
 		//List<String> termList = Arrays.asList("security");
 		List<String> termList = new ArrayList<String>();
 		// input the query
-		String query = "information retrieval";
+		String query = "student affairs";
 		String[] words = query.split(" ");
 		for(String word : words)
 			termList.add(word);
 		List<DocScore> topdocs = calculateDocScores(termList, 10);
-		for (int i = 0; i < 5; i++) {
+		for (int i = 0; i < 5; i++ ) {
 			DocScore doc = topdocs.get(i);
 			System.out.println(doc.docId);
+
 			System.out.println(docid2docurl.get(doc.docId));
 			System.out.println(doc.score);
 		}

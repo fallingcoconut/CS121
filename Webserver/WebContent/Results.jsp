@@ -31,7 +31,7 @@
 	<!-- input box -->
 	<div class="col-lg-6">
 		<div class="input-group">
-			<form method="get" action="doGet()">
+			<form method="get" action="index.java">
 				<input type="text" class="form-control" placeholder="Search for..." onclick="the get function">
 				<span class="input-group-btn">
 					<button class="btn btn-default" type="button">Go</button>
@@ -43,10 +43,10 @@
 	<!-- returned results-->
 	<div class="jumbotron">
 		<h1>Search Results:</h1>
-		<form method="post" action="doPost()">
+<!-- 		<form method="post" action="doPost()">
 				<button class="btn btn-default" type="button">get results</button>
 				</span>
-		</form>
+		</form> -->
 	</div>
 	
 	</div>

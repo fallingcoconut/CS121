@@ -1540,3 +1540,13 @@ java.lang.ArrayIndexOutOfBoundsException: 12
 	at org.eclipse.equinox.launcher.Main.invokeFramework(Main.java:648)
 	at org.eclipse.equinox.launcher.Main.basicRun(Main.java:603)
 	at org.eclipse.equinox.launcher.Main.run(Main.java:1465)
+!SESSION 2015-06-11 10:24:01.449 -----------------------------------------------
+eclipse.buildId=4.4.2.M20150204-1700
+java.version=1.8.0_25
+java.vendor=Oracle Corporation
+BootLoader constants: OS=macosx, ARCH=x86_64, WS=cocoa, NL=en_US
+Framework arguments:  -product org.eclipse.epp.package.jee.product -keyring /Users/Eddie/.eclipse_keyring -showlocation
+Command-line arguments:  -os macosx -ws cocoa -arch x86_64 -product org.eclipse.epp.package.jee.product -keyring /Users/Eddie/.eclipse_keyring -showlocation
+
+!ENTRY org.eclipse.wst.server.core 4 0 2015-06-11 10:40:15.848
+!MESSAGE Server Tomcat v8.0 Server at localhost failed to start.

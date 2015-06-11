@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,8 +24,6 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.StringTokenizer;
-
-import java.util.Scanner;
 
 /**
  * A collection of utility methods for text processing.
@@ -401,35 +398,10 @@ public class Utilities {
 		return termid2term.keySet().size();
 	}
 
+	@SuppressWarnings("unchecked")
 	public static void loadIndexes(String directory) {
 		long startTime = System.currentTimeMillis();
 		try {
-			// File file = new File("term2termid");
-			// FileOutputStream f;
-			// ObjectOutputStream s;
-			// f = new FileOutputStream(file);
-			// s = new ObjectOutputStream(f);
-			// s.writeObject(term2termid);
-			// s.close();
-			//
-			// file = new File("termid2term");
-			// f = new FileOutputStream(file);
-			// s = new ObjectOutputStream(f);
-			// s.writeObject(termid2term);
-			// s.close();
-			//
-			// file = new File("docid2termlist");
-			// f = new FileOutputStream(file);
-			// s = new ObjectOutputStream(f);
-			// s.writeObject(docid2termlist);
-			// s.close();
-			//
-			// file = new File("termid2docidlist");
-			// f = new FileOutputStream(file);
-			// s = new ObjectOutputStream(f);
-			// s.writeObject(termid2docids);
-			// s.close();
-
 			FileInputStream r = new FileInputStream("term2termid");
 			ObjectInputStream t = new ObjectInputStream(r);
 			term2termid = (HashMap<String, Integer>) t.readObject();
@@ -505,23 +477,11 @@ public class Utilities {
 			s.writeObject(docid2termfrequencymap);
 			s.close();
 
-			// FileInputStream r = new FileInputStream("term2termid");
-			// ObjectInputStream t = new ObjectInputStream(r);
-			// HashMap<String, Integer> fileObj2 = (HashMap<String, Integer>)
-			// t.readObject();
-			// t.close();
-			// System.out.println(term2termid.hashCode());
-			// System.out.println(fileObj2.hashCode());
-
 		} catch (FileNotFoundException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
-		// } catch (ClassNotFoundException e1) {
-		// e1.printStackTrace();
-		// }
 
 	}
 
@@ -589,7 +549,7 @@ public class Utilities {
 
 				mag = Math.sqrt(mag);
 				
-				// Cosine Similarity = A.B / |A|*|B|
+				// Cosine Similarity = A.B / (|A|*|B|)
 				docscores.put(docId, score / (querymag * mag));
 			}
 		}
